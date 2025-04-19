@@ -54,7 +54,7 @@ def extract_pose_landmarks(rgb_frame, mp_pose):
     if pose_results.pose_landmarks:
         for i, lm in enumerate(pose_results.pose_landmarks.landmark):
             if i < 17 and i not in [7, 8]:  # Loại bỏ từ hông trở xuống và 2 tai
-                pose_landmarks.append((lm.x, lm.y))
+                pose_landmarks.append((lm.x, lm.y, lm.z))
 
     return pose_landmarks
 
@@ -71,29 +71,21 @@ def classify_hands (pose_landmarks, hand_landmarks):
         return "Left"
     else:
         return "Right"
-    
 
 def extract_hand_landmarks(rgb_frame, mp_hands, pose_landmarks):
     hands_results = mp_hands.process(rgb_frame)
     left_hand_landmarks = []
     right_hand_landmarks = []
-    
 
     if hands_results.multi_hand_landmarks and hands_results.multi_handedness:
         for hand_landmarks, handedness in zip(hands_results.multi_hand_landmarks, hands_results.multi_handedness):
             # Không sử dụng hướng tay của mediapipe vì độ chính xác thấp và thường ngược hướng
-            landmarks = [(lm.x, lm.y) for lm in hand_landmarks.landmark]
+            landmarks = [(lm.x, lm.y, lm.z) for lm in hand_landmarks.landmark]
             if classify_hands(pose_landmarks, landmarks) == "Right":
                 right_hand_landmarks = landmarks
             else:
-                left_hand_landmarks = landmarks   
-
-
-
-        
-    
+                left_hand_landmarks = landmarks      
     return left_hand_landmarks, right_hand_landmarks
-
 
 def extract_landmarks(frames):
     mp_pose = mp.solutions.pose.Pose(static_image_mode=True)
@@ -118,29 +110,63 @@ def extract_landmarks(frames):
     return landmarks_dict
 
 
-def filter_invalid_landmarks(landmarks_dict):
+def filter_and_interpolate_landmarks(landmarks_dict):
     validated = {}
-    for landmarks_idx, landmarks_data in landmarks_dict.items():
+
+    # Lặp qua từng frame
+    for i, (frame_idx, landmarks_data) in enumerate(landmarks_dict.items()):
         validated_landmarks = {}
+
         # Nếu không có pose thì bỏ qua frame
-        if  not landmarks_data["pose"]:
+        if not landmarks_data["pose"]:
             continue
+
         for part in ["pose", "right", "left"]:
-            # Nếu không có dữ liệu cho phần này, gán mặc định
-            if part not in landmarks_data or not landmarks_data[part]:
-                if part in ["right", "left"]:
-                    validated_landmarks[part] = [(0.0, 0.0)] * 21
+            current = landmarks_data.get(part, [])
+
+            # Xử lý nội suy nếu mất tay và có thể nội suy
+            if part in ["right", "left"] and not current:
+                if 0 < i < len(landmarks_dict) - 1:
+                    prev_data = landmarks_dict.get(list(landmarks_dict.keys())[i - 1], {})
+                    next_data = landmarks_dict.get(list(landmarks_dict.keys())[i + 1], {})
+                    prev_points = prev_data.get(part, [])
+                    next_points = next_data.get(part, [])
+
+                    if prev_points and next_points:
+                        if not (all(p[0] == 0.0 and p[1] == 0.0 and p[2] == 0.0 for p in prev_points) or
+                                all(p[0] == 0.0 and p[1] == 0.0 and p[2] == 0.0 for p in next_points)):
+                            # Thực hiện nội suy nếu có dữ liệu hợp lệ
+                            interpolated_points = []
+                            for j in range(21):  # 21 points cho hand
+                                if j < len(prev_points) and j < len(next_points):
+                                    x = (prev_points[j][0] + next_points[j][0]) / 2
+                                    y = (prev_points[j][1] + next_points[j][1]) / 2
+                                    z = (prev_points[j][2] + next_points[j][2]) / 2
+                                    interpolated_points.append((x, y, z))
+                                else:
+                                    interpolated_points.append((0.0, 0.0, 0.0))
+                            validated_landmarks[part] = interpolated_points
+                            continue
+
+                # Nếu không thể nội suy, gán 0
+                validated_landmarks[part] = [(0.0, 0.0, 0.0)] * 21
             else:
                 processed_points = []
-                for point in landmarks_data[part]:
+                for point in current:
                     x = float(point[0])
                     y = float(point[1])
+                    z = float(point[2])
                     if not (0.0 <= x <= 1.0 and 0.0 <= y <= 1.0):
-                        x, y = 0.0, 0.0
-                    processed_points.append((x, y))
+                        x, y, z = 0.0, 0.0, 0.0
+                    processed_points.append((x, y, z))
                 validated_landmarks[part] = processed_points
-        validated[landmarks_idx] = validated_landmarks
+
+        validated[frame_idx] = validated_landmarks
+
     return validated
+
+
+
 
 
 # -------- Chuẩn hóa --------
@@ -152,7 +178,6 @@ def calculate_head_unit(pose_landmarks):
     head_unit = euclidean_distance(left_eye,right_eye)
     return head_unit
 
-
 def calculate_sign_space(pose_landmarks):
     head_unit = calculate_head_unit(pose_landmarks)
 
@@ -162,7 +187,7 @@ def calculate_sign_space(pose_landmarks):
     width = 7 * head_unit
     # height = 9.5 * head_unit 
     
-    center_x, center_y = nose
+    center_x, center_y , center_z = nose
 
     x1 = center_x - width / 2
 
@@ -171,7 +196,6 @@ def calculate_sign_space(pose_landmarks):
     # y2 = min(1.0 , int(center_y + 7.5 * head_unit))
     y2 = center_y + 8 * head_unit 
     return [x1, y1, x2, y2]
-
 
 def calculate_all_sign_space(landmarks_dict):
     sign_spaces = {}
@@ -189,13 +213,26 @@ def normalize_landmarks_to_sign_space(landmarks_dict, sign_spaces):
         normalized_landmarks = {}
         for part in ["pose", "right", "left"]:
             processed_points = []
+
+            z_nose = None
+            if part == "pose" and len(landmarks_data[part]) > 0:
+                z_nose = landmarks_data[part][0][2]
+                if abs(z_nose)< 0.01:
+                    z_nose = None
+
             for point in landmarks_data[part]:
                 x = float(point[0])
                 y = float(point[1])
+                z = float(point[2])
                 if x != 0.0 and y != 0.0:
                    x = (x - Xmin) / w
                    y = (y - Ymin) / h
-                processed_points.append((x, y))
+
+                if z_nose is not None and abs(z) > 0.0001:
+                    z = z / z_nose
+                processed_points.append((x, y, z))
+
+            
             normalized_landmarks[part] = processed_points
         normalized[landmarks_idx] = normalized_landmarks
     return normalized

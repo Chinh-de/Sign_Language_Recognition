@@ -50,7 +50,9 @@ if start_btn:
 if stop_btn:
     st.session_state.running = False
 
-
+st.sidebar.markdown("---") 
+st.sidebar.subheader("Kết quả nhận diện:")
+result_placeholder = st.sidebar.empty()
 
 # ==== Khu vực hiển thị video ====
 frame_placeholder = st.empty()
@@ -135,8 +137,14 @@ if st.session_state.running:
             frame = cv2.flip(frame, 1)
 
             
-            cv2.putText(frame, f"{Server.last_word_or_sentence}", (10, 30), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+            cv2.putText(frame,
+            f"{Server.last_word_or_sentence}",
+            (10, 40),                           # Vị trí: thấp chút cho vừa mắt
+            cv2.FONT_HERSHEY_DUPLEX,           # Font rõ nét, dày vừa phải
+            0.75,                                # Cỡ chữ lớn hơn
+            (0, 0, 0),                      # Màu vàng nổi bật
+            1,                                  # Độ dày viền chữ
+            cv2.LINE_AA) 
 
             # Dòng hiển thị ở góc dưới trái cho FPS
             cv2.putText(frame, f"FPS: {fps:.2f}", (10, frame.shape[0] - 70),
@@ -149,6 +157,9 @@ if st.session_state.running:
 
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame_placeholder.image(frame_rgb, channels="RGB", use_container_width=True)
+
+        result_placeholder.success(Server.last_word_or_sentence if Server.last_word_or_sentence else "Chờ nhận diện...")
+
     
 
 

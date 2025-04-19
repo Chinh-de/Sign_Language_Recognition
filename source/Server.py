@@ -40,7 +40,7 @@ last_word_or_sentence = ""
 # get mapping index to word
 index_to_word = {}
  
-with open(BASE_DIR /"../data/raw/dataset/wlasl_class_list.txt", "r", encoding="utf-8") as f:
+with open(BASE_DIR /"../Model/top_300_classes.txt", "r", encoding="utf-8") as f:
     for line in f:
         if line.strip():  # bỏ dòng trống
             parts = line.strip().split("\t")  # tách theo tab
@@ -57,27 +57,10 @@ with open(BASE_DIR /"../config.json", "r") as config_file:
 
 # -------- tạo Model --------
 
-INPUT_DIM = 114
-D_MODEL = 256
-NUM_CLASSES = 100
-NUM_HEADS = 8
-ENC_LAYERS = 4
-DEC_LAYERS = 4
-FEEDFORWARD_DIM = 2048
-DROPOUT = 0.3
-
 # Tạo model
-asl_model = Sign2PoseTransformer(
-    input_dim=INPUT_DIM,
-    d_model=D_MODEL,
-    nhead=NUM_HEADS,
-    num_encoder_layers=ENC_LAYERS,
-    num_decoder_layers=DEC_LAYERS,
-    dim_feedforward=FEEDFORWARD_DIM,
-    dropout=DROPOUT,
-    num_classes=NUM_CLASSES
-)
-state_dict = torch.load(BASE_DIR /'../Model/best_model_9-4.pth', map_location=torch.device('cpu'))
+asl_model = Sign2PoseTransformer()
+
+state_dict = torch.load(BASE_DIR /'../Model/best_model.pth', map_location=torch.device('cpu'))
 asl_model.load_state_dict(state_dict)
 asl_model.eval() 
 
@@ -90,9 +73,9 @@ def preprocess_sequence(landmarks_dict):
     for frame_id in sorted(landmarks_dict.keys(), key=lambda x: int(x)):
         frame_data = landmarks_dict[frame_id]
         # Trường hợp thiếu right/left/pose thì thêm toàn 0
-        pose = frame_data.get('pose', [(0.0, 0.0)] * 33)
-        right = frame_data.get('right', [(0.0, 0.0)] * 21)
-        left = frame_data.get('left', [(0.0, 0.0)] * 21)
+        pose = frame_data.get('pose', [(0.0, 0.0, 0.0)] * 33)
+        right = frame_data.get('right', [(0.0, 0.0, 0.0)] * 21)
+        left = frame_data.get('left', [(0.0, 0.0, 0.0)] * 21)
 
         all_landmarks = pose + right + left
         flattened = [coord for point in all_landmarks for coord in point]
@@ -158,11 +141,10 @@ def model_worker():
         print(f"[MODEL] Nhận đoạn {len(segment)} frames để xử lý.")
         keyframes = Extract_key_frames(segment)
         landmarks_dict = extract_landmarks(keyframes)
-        filtered_landmarks = filter_invalid_landmarks(landmarks_dict)
+        filtered_landmarks = filter_and_interpolate_landmarks(landmarks_dict)
         sign_spaces = calculate_all_sign_space(filtered_landmarks)
         normalized_landmarks = normalize_landmarks_to_sign_space(filtered_landmarks, sign_spaces)
         # print(normalized_landmarks)
-        # TODO: Gọi model tại đây để nhận diện thủ ngữ
 
 
         input_tensor = preprocess_sequence(normalized_landmarks)  # (frames, features)
@@ -179,6 +161,7 @@ def model_worker():
 
 
             last_word_or_sentence = predict
+            
 
         print(f"[MODEL] Đã xử lý xong đoạn {len(segment)} frames.")
 
@@ -223,9 +206,10 @@ def sentence_worker():
         print(words)
         sentence = translate_glosses(words, GEMINI_API_KEY)
         print("[SENTENCE]", sentence)
-        # send_message(IP,sentence)\
+        # send_message(IP,sentence)
 
         last_word_or_sentence = sentence
+        print("[SENTENCE] Đã gửi câu đến ESP32:", last_word_or_sentence)
     else:
         print("[SENTENCE] Không đủ từ để tạo câu.")
 

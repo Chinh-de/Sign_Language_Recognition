@@ -22,10 +22,10 @@ class PositionalEncoding(nn.Module):
         super().__init__()
         self.dropout = nn.Dropout(p=dropout)
         pe = torch.zeros(max_len, d_model)
-        position = torch.arange(max_len, dtype=torch.float).unsqueeze(1)
+        position = torch.arange(max_len, dtype=torch.float32).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
         pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term[:pe[:, 1::2].shape[1]])
+        pe[:, 1::2] = torch.cos(position * div_term)
         pe = pe.unsqueeze(0)
         self.register_buffer('pe', pe)
 
@@ -33,11 +33,10 @@ class PositionalEncoding(nn.Module):
         x = x + self.pe[:, :x.shape[1], :]
         return self.dropout(x)
 
-
 class Sign2PoseTransformer(nn.Module):
-    def __init__(self, input_dim=114, d_model=512, 
-                 nhead=8, num_encoder_layers=6, num_decoder_layers=6, 
-                 dim_feedforward=2048, dropout=0.1, num_classes=100):
+    def __init__(self, input_dim=171, d_model=256, 
+                 nhead=8, num_encoder_layers=3, num_decoder_layers=3, 
+                 dim_feedforward=2048, dropout=0.25, num_classes=100):
         super().__init__()
         self.input_proj = nn.Linear(input_dim, d_model)
         self.pos_encoder = PositionalEncoding(d_model, dropout=dropout)
@@ -54,17 +53,13 @@ class Sign2PoseTransformer(nn.Module):
     
     def forward(self, src):
         batch_size = src.size(0)
-        # Important
-        src_padded = pad_sequence(src, batch_first=False, padding_value=0) 
-        src_padded = self.input_proj(src_padded)
-        src_padded = self.pos_encoder(src_padded)
-        src_padded = src_padded.permute(1, 0, 2)
-        
-        memory = self.encoder(src_padded)
-        
+        src_key_padding_mask = (src.sum(dim=2) == 0)
+        src = self.input_proj(src)
+        src = self.pos_encoder(src)
+        memory = self.encoder(src, src_key_padding_mask=src_key_padding_mask)
         class_query = self.class_query.expand(batch_size, 1, -1) 
-        out = self.decoder(tgt=class_query, memory=memory)       
+        out = self.decoder(tgt=class_query, memory=memory, memory_key_padding_mask=src_key_padding_mask)     
         out = out.squeeze(1)            
         logits = self.fc_out(out)
-    
+        
         return logits
