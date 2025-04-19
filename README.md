@@ -33,7 +33,7 @@ This will install the following dependencies:
 
 ```json
 {
-    "apikey": "YOUR_API_KEY"
+    "GEMINI_API_KEY": "YOUR_API_KEY"
 }
 ```
 
@@ -89,7 +89,7 @@ Lệnh trên sẽ cài đặt các phụ thuộc sau:
 
 ```json
 {
-    "apikey": "YOUR_API_KEY"
+    "GEMINI_API_KEY": "YOUR_API_KEY"
 }
 ```
 
