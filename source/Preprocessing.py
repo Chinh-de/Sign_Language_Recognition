@@ -59,18 +59,21 @@ def extract_pose_landmarks(rgb_frame, mp_pose):
     return pose_landmarks
 
 def classify_hands (pose_landmarks, hand_landmarks):
-    left_wrist_pose  = pose_landmarks[13]  # Cổ tay trái từ Pose là 15 trừ đi 2 tai đã lượt bỏ nên idx = 13
-    right_wrist_pose = pose_landmarks[14]  # Cổ tay phải từ Pose là 16 trừ đi 2 tai đã lượt bỏ nên idx = 14
-    wrist = hand_landmarks[0] 
-    
+    try:
+        left_wrist_pose  = pose_landmarks[13]  # Cổ tay trái từ Pose là 15 trừ đi 2 tai đã lượt bỏ nên idx = 13
+        right_wrist_pose = pose_landmarks[14]  # Cổ tay phải từ Pose là 16 trừ đi 2 tai đã lượt bỏ nên idx = 14
+        wrist = hand_landmarks[0] 
+        
 
-    dleft = euclidean_distance(left_wrist_pose, wrist)
-    dright = euclidean_distance(right_wrist_pose, wrist)
-   
-    if(dleft < dright):
+        dleft = euclidean_distance(left_wrist_pose, wrist)
+        dright = euclidean_distance(right_wrist_pose, wrist)
+    
+        if(dleft < dright):
+            return "Left"
+        else:
+            return "Right"
+    except:
         return "Left"
-    else:
-        return "Right"
 
 def extract_hand_landmarks(rgb_frame, mp_hands, pose_landmarks):
     hands_results = mp_hands.process(rgb_frame)

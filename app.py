@@ -32,7 +32,8 @@ source = st.sidebar.selectbox("Nguồn video", ["Webcam laptop", "ESP32-CAM"])
 camera_url = ""
 if source == "ESP32-CAM":
     camera_url = st.sidebar.text_input("Nhập IP ESP32cam (VD: 192.168.1.10)", "")
-message_url = st.sidebar.text_input("Nhập URL gửi tin nhắn", "http://your-api-url.com/send")
+IP_Message = st.sidebar.text_input("Nhập IP phần cứng", "Your ESP32 IP")
+st.sidebar.markdown("---")
 
     # = Nút điều khiển =
 if "running" not in st.session_state:
@@ -67,6 +68,12 @@ if st.session_state.running:
     else:
         st.error("Vui lòng nhập địa chỉ IP của ESP32-CAM")
         st.stop()
+
+    if IP_Message:
+        Server.IP_Message = IP_Message
+    else:
+        Server.IP_Message = ""
+
     
     # Khởi tạo pose từ MediaPipe
     mp_pose = mp.solutions.pose

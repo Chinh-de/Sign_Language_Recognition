@@ -11,6 +11,8 @@ import json
 from google import genai
 from google.genai import types
 import logging
+import string
+
 
 from pathlib import Path
 
@@ -35,6 +37,7 @@ MIN_ACTIVE_FRAMES = 15
 MAX_NO_NEW_WORD_FRAMES = 60 #2s 
 MIN_WORDS_FOR_SENTENCE = 2  # Tối thiểu số từ để tạo câu
 
+IP_Message = ""
 last_word_or_sentence = ""
 
 # get mapping index to word
@@ -111,6 +114,9 @@ def check_action_state(pose_landmarks):
 
 # === GỬI MESSAGE ĐẾN ESP32 ===
 def send_message(ip_address, message):
+    if ip_address == "":
+        print("❌ Địa chỉ IP Message không hợp lệ.")
+        return False
     try:
         # URL endpoint gửi tin nhắn
         url = f"http://{ip_address}/send"
@@ -156,7 +162,7 @@ def model_worker():
             predicted_idx = torch.argmax(output, dim=1).item()
             predict = index_to_word[predicted_idx]
             print("Predicted:", predict)
-            # send_message("IP", predict)
+            send_message(IP_Message, predict)
             recognized_words_queue.put(predict)
 
 
@@ -169,6 +175,10 @@ def model_worker():
 
 
 # === GENERATE SENTENCE ===
+
+def clean_text_for_cv2(text: str) -> str:
+    # Chỉ giữ lại các ký tự ASCII có thể in được
+    return ''.join(char for char in text if char in string.printable)
 
 def translate_glosses(glosses: str, api_key: str) -> str:
     client = genai.Client(api_key=api_key)
@@ -189,7 +199,7 @@ def translate_glosses(glosses: str, api_key: str) -> str:
         ),
     )
 
-    return response.text if response.text else "Can't generate sentence"
+    return clean_text_for_cv2(response.text) if response.text else "Can't generate sentence"
 
 
 # === LUỒNG TẠO CÂU ===
@@ -206,10 +216,10 @@ def sentence_worker():
         print(words)
         sentence = translate_glosses(words, GEMINI_API_KEY)
         print("[SENTENCE]", sentence)
-        # send_message(IP,sentence)
+        send_message(IP_Message,sentence)
 
         last_word_or_sentence = sentence
-        print("[SENTENCE] Đã gửi câu đến ESP32:", last_word_or_sentence)
+        print("[SENTENCE] Tạo câu: ", last_word_or_sentence)
     else:
         print("[SENTENCE] Không đủ từ để tạo câu.")
 
