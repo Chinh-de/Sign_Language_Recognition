@@ -7,4 +7,4 @@ opencv-python
 mediapipe
 tqdm
 requests
-google-cloud-genai
+google-genai
