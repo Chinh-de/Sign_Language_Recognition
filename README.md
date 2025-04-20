@@ -22,7 +22,7 @@ This will install the following dependencies:
 - mediapipe
 - tqdm
 - requests
-- google-cloud-genai
+- google-genai
 
 ## Setup Google Cloud API Key
 
@@ -78,7 +78,7 @@ Lệnh trên sẽ cài đặt các phụ thuộc sau:
 - mediapipe
 - tqdm
 - requests
-- google-cloud-genai
+- google-genai
 
 ## Cấu hình API Key của Google Cloud
 
