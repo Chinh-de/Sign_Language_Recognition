@@ -31,6 +31,9 @@ BASE_DIR = Path(__file__).resolve().parent
 # Queue để model xử lý
 action_queue = Queue()
 recognized_words_queue = Queue()
+
+
+
 # Cấu hình timeout
 MAX_IDLE_FRAMES = 5
 MIN_ACTIVE_FRAMES = 15
@@ -41,16 +44,13 @@ IP_Message = ""
 last_word_or_sentence = ""
 
 # get mapping index to word
-index_to_word = {}
+index_to_gloss = {}
  
-with open(BASE_DIR /"../Model/top_300_classes.txt", "r", encoding="utf-8") as f:
-    for line in f:
-        if line.strip():  # bỏ dòng trống
-            parts = line.strip().split("\t")  # tách theo tab
-            if len(parts) == 2:
-                index = int(parts[0])
-                word = parts[1]
-                index_to_word[index] = word
+index_to_gloss_df = pd.read_csv(BASE_DIR /"../Model/index_to_gloss.csv")
+for i, row in index_to_gloss_df.iterrows():
+    index_to_gloss[row['index']] = row['gloss']
+
+
 
 # get gemini APIKEY
 with open(BASE_DIR /"../config.json", "r") as config_file:
@@ -63,7 +63,7 @@ with open(BASE_DIR /"../config.json", "r") as config_file:
 # Tạo model
 asl_model = Sign2PoseTransformer()
 
-state_dict = torch.load(BASE_DIR /'../Model/best_model.pth', map_location=torch.device('cpu'))
+state_dict = torch.load(BASE_DIR /'../Model/best_model_22-4_87.pth', map_location=torch.device('cpu'))
 asl_model.load_state_dict(state_dict)
 asl_model.eval() 
 
@@ -160,7 +160,7 @@ def model_worker():
         with torch.no_grad():
             output = asl_model(input_tensor)  # (1, num_gloss)
             predicted_idx = torch.argmax(output, dim=1).item()
-            predict = index_to_word[predicted_idx]
+            predict = index_to_gloss[predicted_idx]
             print("Predicted:", predict)
             send_message(IP_Message, predict)
             recognized_words_queue.put(predict)

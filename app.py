@@ -2,13 +2,16 @@ import streamlit as st
 import cv2
 import mediapipe as mp
 from source import Server
-
+from queue import Empty
 
 MAX_IDLE_FRAMES = 5
 MIN_ACTIVE_FRAMES = 15
 MAX_NO_NEW_WORD_FRAMES = 60 #2s 
 
 cap = None
+
+
+
 
 # ==== Tiêu đề và giao diện ====
 st.set_page_config(page_title="Sign Language Recognition", layout="wide")
@@ -48,8 +51,22 @@ stop_btn = st.sidebar.button("⏹️ Dừng")
 
 if start_btn:
     st.session_state.running = True
+    
 if stop_btn:
     st.session_state.running = False
+    while not Server.action_queue.empty():
+        try:
+            Server.action_queue.get_nowait()
+        except Empty:
+            break
+
+    while not Server.recognized_words_queue.empty():
+        try:
+            Server.recognized_words_queue.get_nowait()
+        except Empty:
+            break    
+    Server.last_word_or_sentence = ""
+    
 
 st.sidebar.markdown("---") 
 st.sidebar.subheader("Kết quả nhận diện:")
@@ -57,7 +74,7 @@ result_placeholder = st.sidebar.empty()
 
 # ==== Khu vực hiển thị video ====
 frame_placeholder = st.empty()
-if st.session_state.running:    
+if st.session_state.running: 
     
     if source == "Webcam laptop":
         cap = cv2.VideoCapture(0)
@@ -167,7 +184,7 @@ if st.session_state.running:
 
         result_placeholder.success(Server.last_word_or_sentence if Server.last_word_or_sentence else "Chờ nhận diện...")
 
-    
+  
 
 
 
