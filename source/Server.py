@@ -76,7 +76,7 @@ def preprocess_sequence(landmarks_dict):
     for frame_id in sorted(landmarks_dict.keys(), key=lambda x: int(x)):
         frame_data = landmarks_dict[frame_id]
         # Trường hợp thiếu right/left/pose thì thêm toàn 0
-        pose = frame_data.get('pose', [(0.0, 0.0, 0.0)] * 33)
+        pose = frame_data.get('pose', [(0.0, 0.0, 0.0)] * 15)
         right = frame_data.get('right', [(0.0, 0.0, 0.0)] * 21)
         left = frame_data.get('left', [(0.0, 0.0, 0.0)] * 21)
 

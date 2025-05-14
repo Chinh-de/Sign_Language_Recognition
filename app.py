@@ -102,15 +102,16 @@ if st.session_state.running:
     is_action_active = False    
     # ==== Nhận diện và hiển thị ====
     Server.threading.Thread(target=Server.model_worker, daemon=True).start()
-
+    fps = cap.get(cv2.CAP_PROP_FPS)
     while True:
         
         ret, frame = cap.read()
         if not ret:
             st.warning("Không nhận được ảnh từ camera!")
             break
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        
+        flip_frame = cv2.flip(frame, 1)  # Lật ảnh theo chiều ngang
+        image_rgb = cv2.cvtColor(flip_frame, cv2.COLOR_BGR2RGB)
         results = pose.process(image_rgb)
 
 
@@ -154,14 +155,14 @@ if st.session_state.running:
             
             
             mp_drawing.draw_landmarks(
-                    frame,
+                    flip_frame,
                     results.pose_landmarks,
                     mp_pose.POSE_CONNECTIONS,
                     landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style())
-            frame = cv2.flip(frame, 1)
+            
 
             
-            cv2.putText(frame,
+            cv2.putText(flip_frame,
             f"{Server.last_word_or_sentence}",
             (10, 40),                           # Vị trí: thấp chút cho vừa mắt
             cv2.FONT_HERSHEY_DUPLEX,           # Font rõ nét, dày vừa phải
@@ -169,17 +170,16 @@ if st.session_state.running:
             (0, 0, 0),                      # Màu vàng nổi bật
             1,                                  # Độ dày viền chữ
             cv2.LINE_AA) 
-
             # Dòng hiển thị ở góc dưới trái cho FPS
-            cv2.putText(frame, f"FPS: {fps:.2f}", (10, frame.shape[0] - 70),
+            cv2.putText(flip_frame, f"FPS: {fps:.2f}", (10, frame.shape[0] - 70),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
 
             # Dòng hiển thị ở góc dưới trái cho State
-            cv2.putText(frame, f"State: {state}", (10, frame.shape[0] - 30), 
+            cv2.putText(flip_frame, f"State: {state}", (10, frame.shape[0] - 30), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0) if state == "ACTIVE" else (0, 0, 255), 2)
 
 
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame_rgb = cv2.cvtColor(flip_frame, cv2.COLOR_BGR2RGB)
         frame_placeholder.image(frame_rgb, channels="RGB", use_container_width=True)
 
         result_placeholder.success(Server.last_word_or_sentence if Server.last_word_or_sentence else "Chờ nhận diện...")
