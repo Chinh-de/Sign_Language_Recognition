@@ -1,165 +1,146 @@
+import time
 from django.shortcuts import render
-from django.http import StreamingHttpResponse, JsonResponse
+from django.http import JsonResponse, StreamingHttpResponse
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-import uuid
-import cv2
-import time
 import json
-import logging
+import cv2
+import numpy as np
+import base64
+import threading
 
-from .tasks import session_manager
-from . import Server 
+# Import Recognizer class và các biến/hàm từ module Recognizer
+from .Recognizer import Recognizer, get_last_w_s, get_last_frame
 
-class StartRecognitionView(APIView):
-    """API để bắt đầu phiên nhận diện mới"""
+recognizer_instance = None
+isStop = True
+
+class RecognizerControl(APIView):
     def post(self, request):
+        global recognizer_instance
+        global isStop
         
-        logging.info("StartRecognitionView: Bắt đầu phiên nhận diện mới")
-
-        esp32cam_ip = request.data.get('esp32cam_ip')
-        esp32device_ip = request.data.get('esp32device_ip', '')
-        
-        if not esp32cam_ip:
-            return Response({'error': 'ESP32CAM IP là bắt buộc'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Tạo session ID mới
-        session_id = str(uuid.uuid4())
-        
-        # Bắt đầu phiên
-        success = session_manager.start_session(session_id, esp32cam_ip, esp32device_ip)
-        
-        if not success:
-            return Response({'error': 'Không thể kết nối đến ESP32CAM'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        return Response({
-            'session_id': session_id,
-            'message': 'Phiên nhận diện đã được khởi tạo'
-        }, status=status.HTTP_201_CREATED)
-
-class StopRecognitionView(APIView):
-    """API để dừng phiên nhận diện"""
-    def post(self, request):
-
-        logging.info("StopRecognitionView: Dừng phiên nhận diện")
-
-
-        session_id = request.data.get('session_id')
-        
-        if not session_id:
-            return Response({'error': 'Session ID là bắt buộc'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Dừng phiên
-        session_manager.stop_session(session_id)
-        
-        return Response({'message': 'Phiên đã được dừng thành công'}, status=status.HTTP_200_OK)
-
-class PingView(APIView):
-    """API để client ping và duy trì trạng thái"""
-    def post(self, request):
-
-        logging.info("PingView: Client ping để duy trì trạng thái")
-
-        session_id = request.data.get('session_id')
-        
-        if not session_id:
-            return Response({'error': 'Session ID là bắt buộc'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        success, current_status = session_manager.update_ping(session_id)
-        
-        if not success:
-            return Response({
-                'error': 'Phiên không tồn tại hoặc không hoạt động',
-                'status': current_status
-            }, status=status.HTTP_404_NOT_FOUND)
-        
-        
-        return Response({
-            'result': "latest_result",
-            'status': current_status
-        }, status=status.HTTP_200_OK)
-
-class SessionStatusView(APIView):
-    """API để kiểm tra trạng thái session"""
-    def get(self, request, session_id):
-
-
-        logging.info("SessionStatusView: Kiểm tra trạng thái session")
-
-        status = session_manager.get_session_status(session_id)
-        
-        if status is None:
-            return Response({'error': 'Session không tồn tại'}, status=status.HTTP_404_NOT_FOUND)
+        # Parse request data
+        try:
+            data = json.loads(request.body)
+            esp32_ip = data.get('esp32CamIp', 'local')  # Default to 'local' if not provided
+            device_ip = data.get('deviceIp', 'None')    # Default to 'None' if not provided
+            action = data.get('action', '')
             
-        return Response({'status': status}, status=status.HTTP_200_OK)
+            if action not in ['start', 'stop']:
+                return Response({'error': 'Invalid action. Use "start" or "stop".'}, 
+                                status=status.HTTP_400_BAD_REQUEST)
+                
+            # Handle stop action
+            if action == 'stop' and recognizer_instance:
+                recognizer_instance.stop()
+                isStop = True
+                return Response({'status': 'Recognition stopped successfully'}, 
+                                status=status.HTTP_200_OK)
+              # Handle start action
+            if action == 'start':
+                isStop = False
+                # If recognizer is already running, stop it first
+                if recognizer_instance and recognizer_instance.get_status():
+                    recognizer_instance.stop()
+                    print("Stopping current recognition before starting a new one")
+                  # Initialize recognizer if it doesn't exist yet
+                if recognizer_instance is None:
+                    recognizer_instance = Recognizer(esp32_ip, device_ip)
+                else:
+                    # Update IPs if the recognizer already exists
+                    recognizer_instance.set_esp32_ip(esp32_ip)
+                    recognizer_instance.set_device_ip(device_ip)
+                
+                # Start recognition
+                
+                recognizer_instance.start()
+                
+                
+                return Response({'status': 'Recognition started successfully'}, 
+                                status=status.HTTP_200_OK)
+                
+        except json.JSONDecodeError:
+            return Response({'error': 'Invalid JSON data'}, 
+                            status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, 
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class VideoFeedView(APIView):
-    """API để stream video"""
-    def get(self, request, session_id):
-        def generate_frames():
 
-            logging.info("VideoFeedView: Bắt đầu stream video")
-
-            while True:
-                # Kiểm tra session có tồn tại và đang ONLINE
-                status = session_manager.get_session_status(session_id)
-                
-                if status != 'ONLINE':
-                    # Chỉ stream khi ONLINE
-                    break
-                    
-                # Lấy frame mới nhất
-                frame = session_manager.get_latest_frame(session_id)
-                if frame is None:
-                    continue
-                
-                ret, buffer = cv2.imencode('.jpg', frame)
-                if not ret:
-                    continue
-                
-                frame_bytes = buffer.tobytes()
-                
+def generate_frames():
+    """Generate video frames for streaming"""
+    global isStop
+    if (isStop): 
+        time.sleep(1)
+    while not isStop:
+    # while True:
+        try:
+            last_frame = get_last_frame()
+            # Get the last frame from Recognizer
+            if last_frame is not None:
+                # Encode the image to JPEG
+                ret, buffer = cv2.imencode('.jpg', last_frame)
+                if ret:
+                    # Convert to bytes
+                    frame = buffer.tobytes()
+                    # Yield the frame in the format expected by multipart HTTP response
+                    yield (b'--frame\r\n'
+                           b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+            else:
+                # If no frame is available, yield a blank frame
+                blank_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+                ret, buffer = cv2.imencode('.jpg', blank_frame)
+                frame = buffer.tobytes()
                 yield (b'--frame\r\n'
-                      b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-                time.sleep(0.1)
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+            time.sleep(0.03) 
+        except Exception as e:
+            print(f"Error in frame generation: {e}")
+            # Yield an empty response if there's an error
+            yield b''
+    print("Video stream stopped.")
         
-        return StreamingHttpResponse(
-            generate_frames(),
-            content_type='multipart/x-mixed-replace; boundary=frame'
-        )
 
-class ResultSSEView(APIView):
-    """API để stream kết quả qua SSE"""
-    def get(self, request, session_id):
-        def event_stream():
-            last_result = ""
-            last_status = ""
-            
-            # while True:
-            #     # Kiểm tra trạng thái session
-            #     current_status = session_manager.get_session_status(session_id)
-                
-            #     # Gửi thông tin status khi có thay đổi
-            #     if current_status != last_status:
-            #         data = json.dumps({'status': current_status})
-            #         yield f"event: status\ndata: {data}\n\n"
-            #         last_status = current_status
-                    
-            #         if current_status == 'INACTIVE' or current_status is None:
-            #             break
-                
-            #     # Lấy kết quả mới nhất
-            #     current_result = session_manager.get_latest_result(session_id)
-                
-            #     # Gửi kết quả nếu có thay đổi
-            #     if current_result != last_result:
-            #         data = json.dumps({'result': current_result})
-            #         yield f"event: result\ndata: {data}\n\n"
-            #         last_result = current_result
-                
-        
-        # response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
-        # response['Cache-Control'] = 'no-cache'
-        # response['X-Accel-Buffering'] = 'no'
-        # return response
+
+def video_feed(request):
+    """Stream video frames"""
+    return StreamingHttpResponse(generate_frames(),
+                                content_type='multipart/x-mixed-replace; boundary=frame')
+
+
+last_index_value = -2  # Initialize with a value that won't match any real index
+
+class PollResultView(APIView):
+    def get(self, request):
+        global last_index_value  # Dùng biến toàn cục để lưu giá trị index cuối cùng
+
+        try:
+            result = get_last_w_s()
+            if not result or len(result) != 2:
+                raise ValueError("get_last_w_s() không trả ra 2 giá trị")
+
+            word_or_sentence, index = result
+
+            # Kiểm tra nếu index khác last_index_value thì mới trả kết quả
+            if index != last_index_value and index >-1:
+                last_index_value = index  # Cập nhật giá trị index
+                print(word_or_sentence, index)
+                return Response({
+                    "text": word_or_sentence,
+                    "index": index,
+                    "has_new": True
+                })
+            else:
+                # Nếu index không thay đổi, trả về trạng thái không có kết quả mới
+                return Response({
+                    "text": word_or_sentence,
+                    "index": index,
+                    "has_new": False
+                })
+
+        except Exception as e:
+            print("❌ Lỗi trong PollResultView:", e)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
