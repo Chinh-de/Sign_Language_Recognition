@@ -2,3 +2,6 @@ data/raw/
 *.mp4
 notebooks/test.ipynb
 config.json
+source/backend/venv/
+source/frontend/node_modules/
+source/frontend/build/
