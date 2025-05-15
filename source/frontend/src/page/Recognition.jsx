@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import Sidebar from "../components/Sidebar";
-import StreamResult from "../components/StreamResult";
+import Sidebar from "../components/recognition/Sidebar";
+import StreamResult from "../components/recognition/StreamResult";
 import Header from "../components/Header";
 import axiosInstance from "../axiosInstance";
 
@@ -62,38 +62,41 @@ const Recognition = () => {
   };
 
 return (
-    <div className="flex h-screen overflow-hidden bg-gray-200">
-      {/* Sidebar */}
-      <Sidebar 
-        onStartRecognition={handleStartRecognition} 
-        onStopRecognition={handleStopRecognition} 
-        isActive={isActive} 
-      />
+    <div className="flex flex-col h-screen overflow-hidden bg-gray-200">
+      {/* Header at the top of the page - outside the sidebar/content flex container */}
+      <Header />
       
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {isLoading && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-lg text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto mb-4"></div>
-              <p className="text-lg">Đang xử lý...</p>
-            </div>
-          </div>
-        )}
+      {/* Main layout container */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <Sidebar 
+          onStartRecognition={handleStartRecognition} 
+          onStopRecognition={handleStopRecognition} 
+          isActive={isActive} 
+        />
         
-        <div className="p-4 flex flex-col h-full overflow-hidden">
-          {/* Header component */}
-          <Header />
-          
-          {errorMessage && (
-            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-4">
-              <p>{errorMessage}</p>
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {isLoading && (
+            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-lg shadow-lg text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto mb-4"></div>
+                <p className="text-lg">Đang xử lý...</p>
+              </div>
             </div>
           )}
           
-          {/* StreamResult với height tự động điều chỉnh */}
-          <div className="flex-1 overflow-hidden">
-            <StreamResult isActive={isActive} />
+          <div className="p-4 flex flex-col h-full overflow-hidden">
+            {errorMessage && (
+              <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-4">
+                <p>{errorMessage}</p>
+              </div>
+            )}
+            
+            {/* StreamResult với height tự động điều chỉnh */}
+            <div className="flex-1 overflow-hidden">
+              <StreamResult isActive={isActive} />
+            </div>
           </div>
         </div>
       </div>

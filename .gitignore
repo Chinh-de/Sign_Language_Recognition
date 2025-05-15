@@ -5,3 +5,5 @@ config.json
 source/backend/venv/
 source/frontend/node_modules/
 source/frontend/build/
+source/backend/db.sqlite3
+source/frontend/package-lock.json
