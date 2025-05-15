@@ -33,11 +33,8 @@ const RecognitionResults = ({ isActive }) => {
 
               // Add the new word to the list if it's not already in the list
               setWords((prevWords) => {
-                // Thêm từ mới vào nếu chưa có trong danh sách
-                if (!prevWords.includes(data.text)) {
                   return [...prevWords, data.text];
-                }
-                return prevWords;
+                
               });
             }
           }
