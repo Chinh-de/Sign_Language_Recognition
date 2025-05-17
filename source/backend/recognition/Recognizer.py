@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent
 # Cấu hình timeout
 MAX_IDLE_FRAMES = 5
 MIN_ACTIVE_FRAMES = 15
-MAX_NO_NEW_WORD_FRAMES = 60 #2s 
+MAX_NO_NEW_WORD_FRAMES = 75 #3s 
 MIN_WORDS_FOR_SENTENCE = 2  # Tối thiểu số từ để tạo câu
 
 
@@ -206,6 +206,10 @@ class Recognizer:
             if segment is None:
                 continue
             print(f"[MODEL] Nhận đoạn {len(segment)} frames để xử lý.")
+
+            # start_time = time.time()
+
+
             keyframes = Extract_key_frames(segment)
             landmarks_dict = extract_landmarks(keyframes)
             filtered_landmarks = filter_and_interpolate_landmarks(landmarks_dict)
@@ -228,6 +232,9 @@ class Recognizer:
 
                 update_last_w_s(predict, is_word=True)
                 
+            # duration = time.time() - start_time
+            # print(f"[MODEL] Đã xử lý xong đoạn {len(segment)} frames trong {duration:.3f} giây.")
+
 
             print(f"[MODEL] Đã xử lý xong đoạn {len(segment)} frames.")
 
@@ -242,7 +249,11 @@ class Recognizer:
         def clean_text_for_cv2(text: str) -> str:
             # Chỉ giữ lại các ký tự ASCII có thể in được
             return ''.join(char for char in text if char in string.printable)
+        # start_time = time.time()
+        
         client = genai.Client(api_key=api_key)
+
+
 
         prompt = f"Please translate the following ASL sign glosses into a complete and meaningful English sentence: {glosses}"
         system_instruction = (
@@ -259,6 +270,10 @@ class Recognizer:
                 max_output_tokens=80, # Kích thước tối đa của màn LCD 20x4
             ),
         )
+
+
+        # duration = time.time() - start_time
+        # print(f"[TRANSLATE] Thời gian dịch glosses: {duration:.3f} giây")
 
         return clean_text_for_cv2(response.text) if response.text else "Can't generate sentence"
 
