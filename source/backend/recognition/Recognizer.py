@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent
 
 # ======== Hằng số cấu hình ==========
 # Cấu hình timeout
-MAX_IDLE_FRAMES = 5
+MAX_IDLE_FRAMES = 8
 MIN_ACTIVE_FRAMES = 15
 MAX_NO_NEW_WORD_FRAMES = 75 #3s 
 MIN_WORDS_FOR_SENTENCE = 2  # Tối thiểu số từ để tạo câu
@@ -311,7 +311,6 @@ class Recognizer:
         threading.Thread(target=self.model_worker, daemon=True).start()
         url = f"http://{self.esp32Cam_ip}:81/stream"
         cap = cv2.VideoCapture(url) if self.esp32Cam_ip != "local" else cv2.VideoCapture(0)
-        fps = cap.get(cv2.CAP_PROP_FPS)
 
         frame_buffer = []
         idle_count = 0
@@ -378,9 +377,7 @@ class Recognizer:
             (0, 0, 0),                      # Màu vàng nổi bật
             1,                                  # Độ dày viền chữ
             cv2.LINE_AA) 
-            # Dòng hiển thị ở góc dưới trái cho FPS
-            cv2.putText(flip_frame, f"FPS: {fps:.2f}", (10, frame.shape[0] - 70),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
+
 
             # Dòng hiển thị ở góc dưới trái cho State
             cv2.putText(flip_frame, f"State: {state}", (10, frame.shape[0] - 30), 

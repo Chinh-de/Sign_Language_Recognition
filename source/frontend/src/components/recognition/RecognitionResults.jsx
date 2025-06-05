@@ -20,18 +20,17 @@ const RecognitionResults = ({ isActive }) => {
           if (data.has_new) {
             console.log("New data received:", data);
             if (data.index === 0) {
-              // Sentence completea
+              // hoàn thành một câu, hiển thị kết quả
               setLastSentence(data.text);
               setIsNewSentence(true);
 
             } else {
               if (isNewSentence) {
+                // làm rỗng danh sách từ khi bắt đầu câu mới
                 setWords([]);
-                // Clear words when a new sentence is detected
                 setIsNewSentence(false);
               }
 
-              // Add the new word to the list if it's not already in the list
               setWords((prevWords) => {
                   return [...prevWords, data.text];
                 

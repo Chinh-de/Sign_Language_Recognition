@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import axiosInstance from "../../axiosInstance";
 
+// tạm thời bổ sung thêm streamKey để tránh cache, tìm cách xử lí khác sau
+
 const VideoStream = ({ isActive }) => {
   const videoRef = useRef(null);
   const [streamKey, setStreamKey] = useState(Date.now());

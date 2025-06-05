@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 
 const VideoPlay = ({ videoSrc, onClose }) => {
-  // Close modal with escape key
+  // Nhấn esp để tắt VideoPlay
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape') {
@@ -13,7 +13,7 @@ const VideoPlay = ({ videoSrc, onClose }) => {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [onClose]);
 
-  // Close modal if clicking outside the content area
+  // xử ví nút đóng
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {
       onClose();
