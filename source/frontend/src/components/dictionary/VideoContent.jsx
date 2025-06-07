@@ -27,13 +27,16 @@ const VideoContent = ({ selectedGloss, videoSources, isLoading, onVideoClick }) 
     );
   }
 
+  // Đảm bảo thứ tự: train, val, test
+  const orderedSubsets = ['train', 'val', 'test'].filter((s) => subsets.includes(s));
+
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-6">{selectedGloss}</h2>
       <p className="text-sm text-yellow-800 bg-yellow-100 border border-yellow-300 rounded px-3 py-2 mb-4">
         ⚠ Nếu video không tải được, hãy mở trong tab mới và reload vài lần để Google Drive tạo bản preview.
       </p>      
-      {subsets.map((subset) => (
+      {orderedSubsets.map((subset) => (
         <div key={subset} className="mb-8">
           <h3 className="text-lg font-semibold mb-4 pb-2 border-b border-gray-200 capitalize">
             {subset === 'train' ? 'Tập huấn luyện' : subset === 'test' ? 'Tập kiểm thử' : 'Tập xác thực'}
