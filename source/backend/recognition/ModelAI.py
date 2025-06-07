@@ -36,7 +36,7 @@ class PositionalEncoding(nn.Module):
 class Sign2PoseTransformer(nn.Module):
     def __init__(self, input_dim=171, d_model=256, 
                  nhead=8, num_encoder_layers=3, num_decoder_layers=3, 
-                 dim_feedforward=2048, dropout=0.25, num_classes=100):
+                 dim_feedforward=2048, dropout=0.2, num_classes=100):
         super().__init__()
         self.input_proj = nn.Linear(input_dim, d_model)
         self.pos_encoder = PositionalEncoding(d_model, dropout=dropout)

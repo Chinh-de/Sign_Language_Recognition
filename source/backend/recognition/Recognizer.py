@@ -117,7 +117,7 @@ class Recognizer:
         # -------- tạo Model --------
         self.asl_model = Sign2PoseTransformer()
 
-        state_dict = torch.load(BASE_DIR /'../../../Model/best_model_22-4_87.pth', map_location=torch.device('cpu'))
+        state_dict = torch.load(BASE_DIR /'../../../Model/best_model.pth', map_location=torch.device('cpu'))
         self.asl_model.load_state_dict(state_dict)
         self.asl_model.eval() 
         # ----------------------------
@@ -310,6 +310,7 @@ class Recognizer:
 
         threading.Thread(target=self.model_worker, daemon=True).start()
         url = f"http://{self.esp32Cam_ip}:81/stream"
+        
         cap = cv2.VideoCapture(url) if self.esp32Cam_ip != "local" else cv2.VideoCapture(0)
 
         frame_buffer = []
@@ -321,6 +322,7 @@ class Recognizer:
             if not ret:
                 print("Không thể đọc frame từ camera.")
                 break
+            state = "IDLE"  # Mặc định là IDLE
             flip_frame = cv2.flip(frame, 1)
             image_rgb = cv2.cvtColor(flip_frame, cv2.COLOR_BGR2RGB)
             results = self.pose.process(image_rgb)
