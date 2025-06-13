@@ -5,7 +5,7 @@ import RecognitionResults from "./RecognitionResults";
 const StreamResult = ({ isActive }) => {
   return (
     <div className="flex flex-col h-full">
-      <div className="flex flex-col lg:flex-row gap-4 h-full">
+      <div className="flex flex-col lg:flex-row gap-1 h-full">
         {/* Camera ở giữa */}
         <div className="lg:w-2/3 h-full flex flex-col">
           <VideoStream isActive={isActive} />

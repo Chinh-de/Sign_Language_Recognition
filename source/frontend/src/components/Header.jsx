@@ -7,10 +7,19 @@ const Header = () => {
 
   return (
     <div className="bg-gray-700 text-white p-3 rounded-lg shadow-md mb-3">
+      
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
-        <div>
-          <h2 className="text-xl font-semibold">Nhận diện ngôn ngữ ký hiệu</h2>
-          <p className="text-sm text-gray-300">Hệ thống dịch ngôn ngữ ký hiệu thời gian thực</p>
+        <div className="flex items-center space-x-3 mb-2 sm:mb-0">
+          <img
+            src="https://creazilla-store.fra1.digitaloceanspaces.com/icons/3234677/american-sign-language-interpreting-icon-md.png"
+            alt="Sign Language Logo"
+            className=" mx-auto sm:mx-0 inline-block align-middle"
+            style={{ width: "60px", height: "60px", objectFit: "contain" }}
+          />
+          <div className="mx-5">
+            <h2 className="text-xl font-semibold">NHẬN  DIỆN NGÔN NGỮ KÍ HIỆU</h2>
+            <p className="text-sm text-gray-300">Hệ thống dịch ngôn ngữ ký hiệu thời gian thực</p>
+          </div>
         </div>
         
         <div className="mt-2 sm:mt-0 flex space-x-2">

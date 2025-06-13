@@ -40,7 +40,7 @@ const RecognitionResults = ({ isActive }) => {
         } catch (error) {
           console.error("Polling error:", error);
         }
-      }, 100); // 0.1 seconds
+      }, 50); // 0.05 seconds
     }
 
     return () => {

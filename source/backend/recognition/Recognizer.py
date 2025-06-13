@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent
 # Cấu hình timeout
 MAX_IDLE_FRAMES = 8
 MIN_ACTIVE_FRAMES = 15
-MAX_NO_NEW_WORD_FRAMES = 75 #3s 
+MAX_NO_NEW_WORD_FRAMES = 90 #3s 
 MIN_WORDS_FOR_SENTENCE = 2  # Tối thiểu số từ để tạo câu
 
 
@@ -253,12 +253,13 @@ class Recognizer:
         
         client = genai.Client(api_key=api_key)
 
-
+        
 
         prompt = f"Please translate the following ASL sign glosses into a complete and meaningful English sentence: {glosses}"
         system_instruction = (
             "You are an expert in translating ASL (American Sign Language) glosses "
             + " into grammatically correct and natural-sounding English sentences."
+            + " Make sure to use all the glosses I provide."
             + " Output only one sentence. If you can't generate a sentence, just return: can't generate."
         )
 
@@ -297,6 +298,8 @@ class Recognizer:
             update_last_w_s(sentence, is_word=False)
         else:
             print("[SENTENCE] Không đủ từ để tạo câu.")
+       
+        # update_last_w_s("Rest new sentences", is_word=False)
 
 
     # === khởi chạy nhận diện ===

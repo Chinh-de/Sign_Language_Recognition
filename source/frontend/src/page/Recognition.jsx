@@ -86,14 +86,14 @@ return (
             </div>
           )}
           
-          <div className="p-4 flex flex-col h-full overflow-hidden">
+          <div className="p-1 flex flex-col h-full overflow-hidden">
             {errorMessage && (
               <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-4">
                 <p>{errorMessage}</p>
               </div>
             )}
             
-            {/* StreamResult với height tự động điều chỉnh */}
+            {/* StreamResult */}
             <div className="flex-1 overflow-hidden">
               <StreamResult isActive={isActive} />
             </div>
